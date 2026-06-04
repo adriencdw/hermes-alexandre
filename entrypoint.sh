@@ -28,9 +28,9 @@ APIFY_TOKEN=${APIFY_TOKEN:-}
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
 TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
 EOF
-chmod 600 "$DATA/.env"
+# Force toutes les permissions sur le volume (lecture/écriture pour tous les users)
+chmod -R 777 "$DATA"
 
-echo "[entrypoint] Utilisateur: $(id)"
-echo "[entrypoint] Permissions /opt/data/logs: $(ls -la $DATA/ | grep logs)"
+echo "[entrypoint] user=$(id) | .env=$(stat -c '%a %U' $DATA/.env 2>/dev/null)"
 echo "[entrypoint] Démarrage de la gateway Hermes..."
 exec hermes gateway run
