@@ -1,0 +1,49 @@
+model:
+  default: claude-opus-4-6
+  provider: anthropic
+
+# MCP Apify — scraping Immoweb via actors-mcp-server
+mcp_servers:
+  apify:
+    command: "npx"
+    args: ["-y", "@apify/actors-mcp-server"]
+    env:
+      APIFY_TOKEN: "${APIFY_TOKEN}"
+
+toolsets:
+- hermes-cli
+
+agent:
+  max_turns: 90
+  gateway_timeout: 1800
+
+# Terminal local dans le container Railway (pas de Modal)
+terminal:
+  backend: local
+  cwd: /opt/data
+  timeout: 180
+  persistent_shell: true
+
+telegram:
+  reactions: false
+  allowed_chats: ""
+
+approvals:
+  mode: manual
+  timeout: 60
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+
+compression:
+  enabled: true
+
+display:
+  language: fr
+  streaming: false
+
+logging:
+  level: INFO
+  max_size_mb: 5
+  backup_count: 3

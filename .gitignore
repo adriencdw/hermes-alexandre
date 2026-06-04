@@ -1,0 +1,28 @@
+# Secrets — jamais committés
+.env
+*.env
+secrets/
+
+# Hermes runtime (logs, sessions, cache)
+logs/
+sessions/
+memories/
+cache/
+*.db
+*.db-shm
+*.db-wal
+state-snapshots/
+image_cache/
+audio_cache/
+pastes/
+processes.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
