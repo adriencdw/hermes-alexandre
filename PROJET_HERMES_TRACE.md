@@ -25,7 +25,7 @@ Alexandre (Telegram) → Hermes Agent (Modal) → MCP Apify → Immoweb scraper 
 | Hermes Agent | v0.14.0 (NousResearch, MIT) |
 | Modal CLI | v1.4.0 |
 | Python (Hermes interne) | 3.11.15 |
-| LLM | claude-opus-4-6 (Anthropic) |
+| LLM | ~~claude-opus-4-6~~ → **claude-haiku-4-5-20251001** (Anthropic) |
 | MCP Apify | `@apify/actors-mcp-server` via npx (stdio) |
 | Actor Immoweb | `crawlerbros/immoweb-scraper` (ID: `UUjIYNdzU5Mo8szQN`) |
 | Stockage CSV | Modal Volume `hermes-data`, monté sur `/data` |
@@ -111,6 +111,19 @@ Oui, il faut des crédits sur le compte Apify avant de lancer le scraper en prod
 1. Se connecter sur [console.apify.com](https://console.apify.com)
 2. Billing → Add credits (carte bancaire ou PayPal)
 3. Le premier scrape de test peut être gratuit (free tier Apify : $5 de crédits offerts à l'inscription)
+
+---
+
+## Mises à jour (session du 2026-06-04 — suite)
+
+- [x] LLM changé de claude-opus-4-6 → **claude-haiku-4-5-20251001** (moins cher)
+- [x] Skill Immoweb créé (`skills/immoweb/`) avec :
+  - URL builder pour Immoweb.be (type, transaction, filtres, communes)
+  - Recherches sauvegardées dans `/opt/data/saved_searches.json`
+  - Instructions complètes pour Hermes dans `SKILL.md`
+- [x] Actor Apify Immoweb : `crawlerbros/immoweb-scraper` (ID: `UUjIYNdzU5Mo8szQN`)
+  - Input : `searchUrls`, `maxItems`, `proxyConfiguration` (RESIDENTIAL BE obligatoire)
+  - Output : `price`, `bedrooms`, `livingArea`, `locality`, `postcode`, `energyClass`, etc.
 
 ---
 
