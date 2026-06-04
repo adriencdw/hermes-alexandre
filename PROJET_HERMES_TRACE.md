@@ -164,14 +164,140 @@ python3 ~/.hermes/skills/csv-export/run_and_export.py '{"startUrls": [{"url": "h
 
 ## Notes de reproductibilité
 
-Pour reproduire ce setup from scratch sur une nouvelle machine :
+Pour reproduire ce setup from scratch :
 
-1. Installer Hermes : `curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash`
-2. Installer Modal : `pip install modal && modal token new`
-3. Créer le volume : `modal volume create hermes-data`
-4. Copier `~/.hermes/config.yaml` (ou appliquer les changements listés ci-dessus)
-5. Renseigner les 4 variables dans `~/.hermes/.env` (voir tableau Secrets)
-6. Copier `~/.hermes/skills/csv-export/` sur la nouvelle machine
-7. `hermes gateway start` → tester depuis Telegram
+1. Créer un projet Railway → connecter le repo GitHub `adriencdw/hermes-alexandre`
+2. Ajouter un volume Railway monté sur `/opt/data`
+3. Ajouter les 4 variables d'env (voir tableau Secrets ci-dessus)
+4. Railway build le Dockerfile et démarre automatiquement
 
 Les secrets ne sont **jamais** dans ce fichier ni dans git.
+
+---
+
+## Problèmes rencontrés — Leçons pour le futur
+
+> Section rédigée après la session de déploiement du 2026-06-04.
+> But : ne pas répéter ces erreurs sur un prochain projet similaire.
+
+---
+
+### 1. Mauvaise compréhension de Modal dans le document de setup
+
+**Ce qui s'est passé :** Le document `hermes-modal-setup.md` décrivait Modal comme un backend
+"serverless complet" pour Hermes. On a passé du temps à configurer Modal avant de réaliser
+que Modal ne gère que le terminal backend (exécution de commandes shell), pas la gateway
+Telegram. La gateway doit tourner quelque part en permanence.
+
+**Pourquoi :** Le document d'instructions mélangeait deux concepts : l'exécution des outils
+(Modal) et l'hébergement de l'agent (gateway). Ce n'est pas la même chose.
+
+**Comment éviter :** Avant de commencer tout setup d'agent avec gateway, poser la question :
+*"Où tourne le processus qui écoute les messages en permanence ?"* Si la réponse n'est pas
+claire dans le doc, chercher sur la doc officielle avant de coder. Ici : Railway/Fly.io pour
+la gateway, pas Modal.
+
+---
+
+### 2. python-telegram-bot absent de l'image locale
+
+**Ce qui s'est passé :** `hermes gateway start` échouait localement car
+`python-telegram-bot` n'était pas installé dans le venv Hermes.
+
+**Pourquoi :** C'est une dépendance optionnelle de Hermes (gateway Telegram) non installée
+par défaut.
+
+**Comment éviter :** Toujours lancer `hermes doctor` en premier — il liste les dépendances
+manquantes. Fix : `uv pip install python-telegram-bot` dans le venv Hermes.
+
+---
+
+### 3. Incident Railway (504 sur toute l'API) pendant le déploiement
+
+**Ce qui s'est passé :** Au milieu du déploiement, toutes les requêtes Railway (upload,
+redeploy, GraphQL) retournaient 504. On a passé ~30 minutes à déboguer ce qui semblait être
+un problème de code, alors que c'était un incident côté Railway.
+
+**Pourquoi :** Railway avait un incident infrastructure ce jour-là.
+
+**Comment éviter :** Si plusieurs opérations Railway différentes échouent toutes avec 504,
+vérifier https://status.railway.com avant de chercher une cause dans le code. Attendre
+la résolution de l'incident plutôt que de multiplier les tentatives de déploiement.
+
+---
+
+### 4. Cache Docker Railway — changements Dockerfile non pris en compte
+
+**Ce qui s'est passé :** Après avoir ajouté `COPY skills/` dans le Dockerfile, Railway
+continuait à builder une image à 4 étapes (l'ancienne), ignorant le changement. Plusieurs
+redéploiements successifs n'ont rien changé.
+
+**Pourquoi :** Railway met en cache les layers Docker. Quand la couche FROM n'a pas changé,
+il peut réutiliser les layers suivants même si le Dockerfile a changé en local — surtout
+quand on fait `railway up` depuis le poste local (upload tarball) plutôt que depuis GitHub.
+
+**Comment éviter :**
+- Connecter Railway directement au repo GitHub (auto-deploy sur push) plutôt que d'utiliser
+  `railway up` depuis le local. Le déploiement GitHub force un build propre.
+- Si `railway up` est utilisé, vérifier les build logs en comptant les étapes : si le nombre
+  d'étapes ne correspond pas au Dockerfile, c'est du cache.
+
+---
+
+### 5. Crash loop entrypoint à cause de `set -e` + `cp` sur dossier absent
+
+**Ce qui s'est passé :** Le premier entrypoint avait `set -e` et essayait de copier
+`/opt/hermes-default/skills/` qui n'existait pas dans l'image (le `COPY skills/` du Dockerfile
+n'avait pas été pris en compte, voir problème 4). Le `cp` échouait → `set -e` → exit → Railway
+redémarrait → boucle infinie.
+
+**Pourquoi :** `set -e` fait échouer tout le script au premier erreur, même sur des opérations
+optionnelles.
+
+**Comment éviter :** Dans les entrypoints Docker :
+- Ne mettre `set -e` que si chaque commande est critique.
+- Toujours protéger les opérations optionnelles avec `|| true` ou des guards `if [ -d ... ]`.
+- Tester l'entrypoint localement avec `docker run` avant de déployer.
+
+---
+
+### 6. Permission denied sur `/opt/data/.env` — user `hermes` dans l'image de base
+
+**Ce qui s'est passé :** Le plus long à déboguer. Hermes échouait à lire `/opt/data/.env`
+avec `PermissionError`. On a essayé `chmod`, `USER root`, réécriture du fichier — rien
+ne semblait marcher pendant plusieurs itérations.
+
+**Pourquoi :** L'image Docker `nousresearch/hermes-agent` crée `/opt/data` avec comme
+propriétaire l'utilisateur `hermes` (non-root) et le mode `700` (drwx------). Sans
+`USER root` dans notre Dockerfile, l'entrypoint tournait en tant que `hermes` et ne pouvait
+pas écrire un `.env` propre. Une fois `USER root` ajouté, l'entrypoint tournait bien en
+root (confirmé par les logs), mais on voyait encore l'erreur — parce que les logs affichés
+venaient encore de l'ancien container en cours de remplacement.
+
+**Ce qui a finalement résolu :** Ajouter `USER root` dans le Dockerfile + rendre l'entrypoint
+complètement idempotent (rm -f + touch + chmod 777 explicites sur chaque dossier).
+
+**Comment éviter :**
+- Toujours vérifier le USER par défaut d'une image de base : `docker inspect <image> | grep User`.
+- Pour les images dont on hérite, ajouter `USER root` explicitement si l'entrypoint doit
+  créer des fichiers.
+- Ajouter des `echo "user: $(id)"` et `ls -la` dans l'entrypoint dès le début pour diagnostiquer
+  rapidement, pas après 5 itérations.
+- Ne pas confondre "les logs montrent encore l'erreur" avec "le fix n'a pas marché" — Railway
+  affiche quelques secondes de l'ancien container pendant la transition.
+
+---
+
+### 7. Pas de volume Railway attaché malgré `railway.toml`
+
+**Ce qui s'est passé :** Le `railway.toml` déclarait `[[volumes]]` avec `mountPath = "/opt/data"`,
+mais Railway n'a pas créé le volume automatiquement via `railway up`. La requête GraphQL
+confirmait 0 volumes attachés au projet.
+
+**Pourquoi :** `railway up` uploade du code mais ne provisionne pas l'infrastructure déclarée
+dans `railway.toml` (volumes, etc.). L'infrastructure se configure via le dashboard ou via
+`railway volume` CLI.
+
+**Comment éviter :** Après chaque `railway up` initial, vérifier que les volumes sont bien
+créés via le dashboard Railway ou `railway volume list`. Le volume persistant est essentiel
+pour que les sessions, mémoires et CSV survivent aux redémarrages.
