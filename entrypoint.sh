@@ -24,5 +24,8 @@ TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
 TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
 EOF
 
+echo "[entrypoint] Fixe les permissions sur /opt/data..."
+chmod -R 777 "$DATA" 2>/dev/null || true
+
 echo "[entrypoint] Démarrage de la gateway Hermes..."
 exec hermes gateway run
