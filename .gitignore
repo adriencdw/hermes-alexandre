@@ -7,6 +7,9 @@ secrets/
 logs/
 sessions/
 memories/
+# Exception : les fichiers d'init Hermes sont commités
+!hermes-init/memories/
+!hermes-init/memories/**
 cache/
 *.db
 *.db-shm
