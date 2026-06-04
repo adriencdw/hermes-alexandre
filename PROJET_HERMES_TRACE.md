@@ -337,3 +337,38 @@ dans `railway.toml` (volumes, etc.). L'infrastructure se configure via le dashbo
 **Comment éviter :** Après chaque `railway up` initial, vérifier que les volumes sont bien
 créés via le dashboard Railway ou `railway volume list`. Le volume persistant est essentiel
 pour que les sessions, mémoires et CSV survivent aux redémarrages.
+
+---
+
+## Coûts observés en test réel (2026-06-04)
+
+Test : quelques échanges Telegram + 1 recherche Immoweb simple.
+
+| Service | Coût observé | Détail |
+|---|---|---|
+| **Anthropic** (Opus pendant les tests) | **$0.91** | Quelques échanges + 1 recherche — sera bien moins cher avec Haiku |
+| **Apify — actor Immoweb** | **$0.12** | Exécution du scraper ($1/1000 résultats) |
+| **Apify — proxy residential** | **$0.41** | Voir explication ci-dessous |
+| **Apify total** | **~$0.53** | par recherche |
+
+### C'est quoi le "proxy residential" Apify ?
+
+Immoweb est protégé par **Cloudflare** qui bloque les IPs de datacenter (serveurs classiques).
+Pour contourner ça, l'actor utilise des **proxies résidentiels** — de vraies adresses IP de
+particuliers, que Cloudflare laisse passer. Ces proxies sont **facturés au trafic** (~$12.5/GB),
+pas au résultat, ce qui explique que leur coût dépasse celui de l'actor lui-même.
+
+**À retenir :** le coût réel d'une recherche Immoweb ≈ **$0.50/recherche** (proxy dominant).
+Ce n'est pas $1/1000 résultats en pratique.
+
+### Estimation mensuelle révisée (usage modéré, ~30 recherches/mois)
+
+| Service | Estimation |
+|---|---|
+| Railway (infra) | ~$2.50/mois |
+| Anthropic Haiku (conversations) | ~$1–3/mois |
+| Apify (30 recherches × $0.53) | ~$15–20/mois |
+| **Total** | **~$20–25/mois** |
+
+**Levier d'optimisation :** réduire `maxItems` dans l'actor → moins de pages chargées → moins
+de trafic proxy → coût proxy réduit. À tester : `maxItems: 5` pour les recherches exploratoires.
