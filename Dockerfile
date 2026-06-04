@@ -1,7 +1,8 @@
 FROM nousresearch/hermes-agent:latest
 
-# Config Hermes sans secrets (les secrets viennent des env vars Railway)
+# Config et skills Hermes (les secrets viennent des env vars Railway)
 COPY config.yaml /opt/hermes-default/config.yaml
+COPY skills/ /opt/hermes-default/skills/
 
 # Entrypoint : initialise /opt/data si vierge, puis démarre la gateway
 COPY entrypoint.sh /entrypoint.sh

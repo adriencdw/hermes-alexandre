@@ -19,7 +19,7 @@ TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS}
 EOF
 
 # Copie les skills du repo si absents
-if [ ! -d "$DATA/skills/csv-export" ]; then
+if [ ! -d "$DATA/skills/csv-export" ] && [ -d "/opt/hermes-default/skills" ]; then
   cp -r /opt/hermes-default/skills "$DATA/"
 fi
 
