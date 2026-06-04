@@ -23,6 +23,22 @@ if [ ! -f "$DATA/config.yaml" ]; then
   cp /opt/hermes-default/config.yaml "$DATA/config.yaml"
 fi
 
+# SOUL.md — identité de l'agent
+if [ ! -f "$DATA/SOUL.md" ] && [ -f "/opt/hermes-default/init/SOUL.md" ]; then
+  cp /opt/hermes-default/init/SOUL.md "$DATA/SOUL.md"
+fi
+
+# Mémoires initiales (instructions permanentes)
+if [ -d "/opt/hermes-default/init/memories" ]; then
+  mkdir -p "$DATA/memories"
+  for f in /opt/hermes-default/init/memories/*.md; do
+    fname=$(basename "$f")
+    if [ ! -f "$DATA/memories/$fname" ]; then
+      cp "$f" "$DATA/memories/$fname"
+    fi
+  done
+fi
+
 # Skills
 if [ -d "/opt/hermes-default/skills" ] && [ ! -d "$DATA/skills/csv-export" ]; then
   cp -r /opt/hermes-default/skills/. "$DATA/skills/"

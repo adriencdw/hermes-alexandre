@@ -139,14 +139,37 @@ Oui, il faut des crédits sur le compte Apify avant de lancer le scraper en prod
 - [x] MCP Apify déclaré dans `config.yaml` (bloc `mcp_servers`)
 - [x] Skill CSV créé dans `~/.hermes/skills/csv-export/`
 
-## Étapes restantes
+## Étapes restantes / TODOs
 
-- [ ] Vérifier les crédits Apify sur console.apify.com (ou ajouter un moyen de paiement)
-- [ ] `hermes doctor` → vérifier qu'il passe sans erreur bloquante
-- [ ] `hermes gateway start` → démarrer la gateway Telegram
-- [ ] Dans une session Hermes : `/reload-mcp` → vérifier que les outils `mcp_apify_*` apparaissent
-- [ ] Lancer un scrape Immoweb de test (quelques résultats) et vérifier le CSV sur le volume
-- [ ] Vérifier la persistance après hibernation : `modal volume ls hermes-data`
+- [ ] **Ajouter l'ID Telegram du client** dans `TELEGRAM_ALLOWED_USERS` sur Railway
+      → Format : `8466667861,ID_DU_CLIENT` (Adrien + client)
+      → Railway dashboard → service → Variables → TELEGRAM_ALLOWED_USERS
+      → L'ID Telegram d'Adrien (8466667861) est déjà présent
+- [ ] Vérifier que le volume Railway `/opt/data` est bien attaché (fait manuellement le 2026-06-04)
+- [ ] Tester une recherche Immoweb de bout en bout depuis Telegram
+- [ ] Vérifier que les recherches sauvegardées persistent après redémarrage du container
+
+## Accès Telegram — utilisateurs autorisés
+
+| Utilisateur | ID Telegram | Statut |
+|---|---|---|
+| Adrien (admin) | `8466667861` | ✓ configuré |
+| Alexandre (client) | à fournir | ⏳ en attente |
+
+Pour ajouter le client : Railway dashboard → service hermes-alexandre
+→ Variables → `TELEGRAM_ALLOWED_USERS` → `8466667861,ID_ALEXANDRE`
+
+## Mémoire persistante Hermes
+
+Fichiers copiés au premier démarrage du container (dans `/opt/data/`) :
+
+| Fichier | Rôle |
+|---|---|
+| `SOUL.md` | Identité de l'agent, instructions générales |
+| `memories/immoweb-skill.md` | Instruction permanente : utiliser le skill Immoweb pour toute recherche |
+
+Ces fichiers sont dans `hermes-init/` dans le repo Git.
+**Ne pas écraser** si déjà présents sur le volume (l'entrypoint vérifie avant de copier).
 
 ---
 
