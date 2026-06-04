@@ -10,17 +10,19 @@ if [ ! -f "$DATA/config.yaml" ]; then
   mkdir -p "$DATA/skills" "$DATA/memories" "$DATA/sessions" "$DATA/logs" "$DATA/cron"
 fi
 
-# Crée le .env depuis les variables d'environnement Railway
-cat > "$DATA/.env" <<EOF
-ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-APIFY_TOKEN=${APIFY_TOKEN}
-TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS}
-EOF
-
-# Copie les skills du repo si absents
-if [ ! -d "$DATA/skills/csv-export" ] && [ -d "/opt/hermes-default/skills" ]; then
-  cp -r /opt/hermes-default/skills "$DATA/"
+# Copie les skills si dispo dans l'image et pas encore dans le volume
+SKILLS_SRC="/opt/hermes-default/skills"
+if [ -d "$SKILLS_SRC" ] && [ ! -d "$DATA/skills/csv-export" ]; then
+  cp -r "$SKILLS_SRC/." "$DATA/skills/"
 fi
 
+# Crée le .env depuis les variables d'environnement Railway
+cat > "$DATA/.env" <<EOF
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+APIFY_TOKEN=${APIFY_TOKEN:-}
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
+EOF
+
+echo "[entrypoint] Démarrage de la gateway Hermes..."
 exec hermes gateway run
